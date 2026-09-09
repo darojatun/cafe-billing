@@ -20,6 +20,15 @@ void ClientWindow::show() {
     gtk_window_set_default_size(GTK_WINDOW(window_), 800, 600);
     gtk_window_set_position(GTK_WINDOW(window_), GTK_WIN_POS_CENTER);
     gtk_window_set_decorated(GTK_WINDOW(window_), TRUE);
+    // Block Alt+F4 / close-button while a session is locked so the
+    // workstation cannot be left without staff action.
+    g_signal_connect(window_, "delete-event",
+        G_CALLBACK(+[](GtkWidget*, GdkEvent*, gpointer d) -> gboolean {
+            auto* self = reinterpret_cast<ClientWindow*>(d);
+            const char* page = gtk_stack_get_visible_child_name(GTK_STACK(self->stack_));
+            bool on_main = page && strcmp(page, "main") == 0;
+            return (self->locked_ && on_main) ? TRUE : FALSE;
+        }), this);
     g_signal_connect(window_, "destroy", G_CALLBACK(gtk_main_quit), nullptr);
 
     // CSS

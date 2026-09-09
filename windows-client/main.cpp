@@ -61,6 +61,15 @@ static HWND hLblTimer, hLblSub, hLblCost, hLblUser, hLblPkg,
 // Lock overlay
 static HWND hLockOverlay = nullptr;
 
+// Fullscreen / always-on-top state (restored when unlocked)
+static bool  g_style_saved = false;
+static LONG  g_prev_style  = 0;
+static RECT  g_prev_rect   = {};
+static bool  g_in_apply_lock = false;
+
+// Global keyboard hook used to swallow Start/Alt+Tab/Alt+F4/Ctrl+Esc while locked
+static HHOOK g_kb_hook = nullptr;
+
 // Fonts
 static HFONT g_fontHuge   = nullptr;
 static HFONT g_fontBig    = nullptr;
@@ -71,6 +80,7 @@ static HFONT g_fontMono   = nullptr;
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK ChatProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK LockProc(HWND, UINT, WPARAM, LPARAM);
+LRESULT CALLBACK LowLevelKeyboardProc(int, WPARAM, LPARAM);
 void ShowConnectPanel(HWND hwnd, bool show);
 void ShowMainPanel(HWND hwnd);
 void UpdateTimerDisplay();
@@ -280,10 +290,79 @@ void ShowMainPanel(HWND hwnd) {
 
 void ApplyLock(bool locked) {
     g_locked = locked;
-    if (hLockOverlay) {
-        ShowWindow(hLockOverlay, locked ? SW_SHOW : SW_HIDE);
-        if (locked) BringWindowToTop(hLockOverlay);
+    if (g_in_apply_lock || !g_hwnd) return;
+    g_in_apply_lock = true;
+
+    if (locked) {
+        if (hLockOverlay) {
+            ShowWindow(hLockOverlay, SW_SHOW);
+            BringWindowToTop(hLockOverlay);
+        }
+
+        // Remember the current windowed geometry exactly once so it can be
+        // restored after the session unlocks.
+        if (!g_style_saved) {
+            g_prev_style = (LONG)GetWindowLongPtr(g_hwnd, GWL_STYLE);
+            GetWindowRect(g_hwnd, &g_prev_rect);
+            g_style_saved = true;
+        }
+
+        // Fullscreen + always-on-top across the monitor the window is on.
+        MONITORINFO mi{ sizeof(mi) };
+        GetMonitorInfo(MonitorFromWindow(g_hwnd, MONITOR_DEFAULTTONEAREST), &mi);
+        SetWindowLongPtr(g_hwnd, GWL_STYLE, WS_VISIBLE | WS_POPUP);
+        SetWindowPos(g_hwnd, HWND_TOPMOST,
+            mi.rcMonitor.left, mi.rcMonitor.top,
+            mi.rcMonitor.right  - mi.rcMonitor.left,
+            mi.rcMonitor.bottom - mi.rcMonitor.top,
+            SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+        SetForegroundWindow(g_hwnd);
+
+        // Swallow Start / Alt+Tab / Alt+F4 / Ctrl+Esc / Win+Tab globally.
+        if (!g_kb_hook) {
+            g_kb_hook = SetWindowsHookExW(WH_KEYBOARD_LL,
+                LowLevelKeyboardProc, GetModuleHandleW(nullptr), 0);
+        }
+    } else {
+        if (hLockOverlay) ShowWindow(hLockOverlay, SW_HIDE);
+
+        // Stop blocking system keys and restore the windowed geometry.
+        if (g_kb_hook) {
+            UnhookWindowsHookEx(g_kb_hook);
+            g_kb_hook = nullptr;
+        }
+        if (g_style_saved) {
+            SetWindowLongPtr(g_hwnd, GWL_STYLE, g_prev_style);
+            SetWindowPos(g_hwnd, HWND_NOTOPMOST,
+                g_prev_rect.left, g_prev_rect.top,
+                g_prev_rect.right  - g_prev_rect.left,
+                g_prev_rect.bottom - g_prev_rect.top,
+                SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+            g_style_saved = false;
+        }
+        SetForegroundWindow(g_hwnd);
     }
+    g_in_apply_lock = false;
+}
+
+// ── Keyboard hook (only active while locked) ───────────────────────────────
+
+LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
+    if (nCode == HC_ACTION && g_locked && wParam != WM_SYSKEYUP) {
+        auto* kb = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
+        UINT vk = kb->vkCode;
+        bool alt  = (GetAsyncKeyState(VK_MENU)   & 0x8000) != 0;
+        bool ctrl = (GetAsyncKeyState(VK_CONTROL)& 0x8000) != 0;
+        bool win  = (GetAsyncKeyState(VK_LWIN)   & 0x8000) != 0 ||
+                    (GetAsyncKeyState(VK_RWIN)   & 0x8000) != 0;
+
+        if (vk == VK_LWIN || vk == VK_RWIN) return 1;      // Start keys
+        if (win && vk == VK_TAB)              return 1;      // Win+Tab
+        if (alt && (vk == VK_TAB || vk == VK_F4 ||
+                    vk == VK_ESCAPE))         return 1;      // Alt+Tab / Alt+F4 / Alt+Esc
+        if (ctrl && (vk == VK_TAB || vk == VK_ESCAPE)) return 1; // Ctrl+Esc / Ctrl+Tab
+    }
+    return CallNextHookEx(nullptr, nCode, wParam, lParam);
 }
 
 // ── Update timer display ──────────────────────────────────────────────────
@@ -454,6 +533,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         return (LRESULT)editBrush;
     }
 
+    case WM_CLOSE:
+        if (g_locked) return 0;          // ignore close while locked
+        break;
+
+    case WM_SYSCOMMAND:
+        if (g_locked && (wp & 0xFFF0) == SC_CLOSE) return 0;
+        break;
+
+    case WM_SYSKEYDOWN:
+    case WM_SYSKEYUP:
+        if (g_locked && (wp == VK_TAB || wp == VK_F4 || wp == VK_ESCAPE)) return 0;
+        break;
+
+    case WM_KEYDOWN:
+    case WM_KEYUP:
+        if (g_locked && (wp == VK_LWIN || wp == VK_RWIN)) return 0;
+        break;
+
     case WM_COMMAND:
         if (LOWORD(wp) == ID_BTN_CONNECT) {
             char host[256], ports[16];
@@ -485,12 +582,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         g_connected = false;
         g_session_active = false;
         if (g_showing_main) {
+            // Leave fullscreen/always-on-top so the user can reconnect.
+            g_locked = false;
+            ApplyLock(false);
             ShowConnectPanel(hwnd, true);
             SetWindowText(hLblConnStatus, "Disconnected from server.");
         }
         return 0;
 
     case WM_DESTROY:
+        if (g_kb_hook) { UnhookWindowsHookEx(g_kb_hook); g_kb_hook = nullptr; }
         PostQuitMessage(0);
         return 0;
     }
