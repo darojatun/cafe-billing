@@ -46,7 +46,7 @@ $CXX -std=c++17 -O2 -march=x86-64 -mtune=generic -mwindows \
     -I"$SCRIPT_DIR" \
     $SRCS \
     -lws2_32 -lcomctl32 \
-    -static-libgcc -static-libstdc++ \
+    -static \
     -o "$OUT"
 
 echo ""

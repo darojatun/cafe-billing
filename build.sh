@@ -47,13 +47,13 @@ if [ -n "$CXX_WIN" ]; then
     echo "→ MinGW found: $CXX_WIN"
     echo "→ Cross-compiling Windows client..."
     mkdir -p "$SCRIPT_DIR/windows-client/build-win"
-    $CXX_WIN -std=c++17 -O2 -mwindows \
+    $CXX_WIN -std=c++17 -O2 -march=x86-64 -mtune=generic -mwindows \
         -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0601 \
         -I"$SCRIPT_DIR/windows-client" \
         "$SCRIPT_DIR/windows-client/main.cpp" \
         "$SCRIPT_DIR/windows-client/WsClient.cpp" \
         -lws2_32 -lcomctl32 \
-        -static-libgcc -static-libstdc++ \
+        -static \
         -o "$SCRIPT_DIR/windows-client/build-win/cafe-client.exe"
     echo "✓ Windows client built: windows-client/build-win/cafe-client.exe"
 else
