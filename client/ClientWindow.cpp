@@ -465,6 +465,35 @@ void ClientWindow::onServerMsg(const std::string& text) {
     gtk_widget_destroy(dlg);
 }
 
+// Grab the X11 keyboard so Alt+Tab / Super shortcuts are swallowed while a
+// session is locked. On Wayland this request is ignored by the compositor,
+// so the call simply becomes a no-op there (harmless).
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+void ClientWindow::grabKeys(bool grab) {
+    if (grab == kb_grabbed_) return;
+
+    GdkDisplay* display = gdk_display_get_default();
+    GdkSeat*    seat    = display ? gdk_display_get_default_seat(display) : nullptr;
+    if (!seat) return;
+
+    GdkDevice* kb = gdk_seat_get_keyboard(seat);
+    if (!kb) return;
+
+    if (grab) {
+        GdkWindow* gdkwin = gtk_widget_get_window(window_);
+        if (!gdkwin) return;
+        if (gdk_device_grab(kb, gdkwin, GDK_OWNERSHIP_NONE, TRUE,
+                            (GdkEventMask)(GDK_KEY_PRESS_MASK | GDK_KEY_RELEASE_MASK),
+                            nullptr, GDK_CURRENT_TIME) == GDK_GRAB_SUCCESS)
+            kb_grabbed_ = true;
+    } else {
+        gdk_device_ungrab(kb, GDK_CURRENT_TIME);
+        kb_grabbed_ = false;
+    }
+}
+#pragma GCC diagnostic pop
+
 void ClientWindow::applyLockOverlay(bool locked) {
     if (overlay_lock_)
         gtk_widget_set_visible(overlay_lock_, locked);
@@ -476,11 +505,13 @@ void ClientWindow::applyLockOverlay(bool locked) {
         gtk_window_set_keep_above(GTK_WINDOW(window_), TRUE);
         gtk_window_fullscreen(GTK_WINDOW(window_));
         gtk_window_present(GTK_WINDOW(window_));
+        grabKeys(true);
     } else {
         gtk_window_set_keep_above(GTK_WINDOW(window_), FALSE);
         gtk_window_unfullscreen(GTK_WINDOW(window_));
         gtk_window_set_default_size(GTK_WINDOW(window_), 800, 600);
         gtk_window_present(GTK_WINDOW(window_));
+        grabKeys(false);
     }
 }
 

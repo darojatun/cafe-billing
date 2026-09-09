@@ -35,6 +35,7 @@ private:
     void openChatDialog();
     void updateTimerDisplay();
     void applyLockOverlay(bool locked);
+    void grabKeys(bool grab);
 
     // callbacks
     static void onConnectClicked(GtkWidget*, gpointer);
@@ -72,6 +73,7 @@ private:
     // Session state
     bool        session_active_ = false;
     bool        locked_         = true;
+    bool        kb_grabbed_     = false;
     int         elapsed_sec_    = 0;
     int         remaining_sec_  = 0;
     int         duration_sec_   = 0;
