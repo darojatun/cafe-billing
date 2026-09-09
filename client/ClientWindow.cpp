@@ -4,7 +4,7 @@
 #include <cstring>
 #include <ctime>
 #include <cmath>
-#include <sstream>
+#include <algorithm>
 #include <sstream>
 
 // ── ClientWindow ──────────────────────────────────────────────────────────
@@ -19,6 +19,7 @@ void ClientWindow::show() {
     gtk_window_set_title(GTK_WINDOW(window_), "CaféBill — Client");
     gtk_window_set_default_size(GTK_WINDOW(window_), 800, 600);
     gtk_window_set_position(GTK_WINDOW(window_), GTK_WIN_POS_CENTER);
+    gtk_window_set_decorated(GTK_WINDOW(window_), TRUE);
     g_signal_connect(window_, "destroy", G_CALLBACK(gtk_main_quit), nullptr);
 
     // CSS
@@ -345,6 +346,7 @@ void ClientWindow::onSessionStart(const Protocol::Message& msg) {
     if (duration_sec_ > 0) {
         gtk_label_set_text(GTK_LABEL(lbl_remaining_), "Time Remaining");
         gtk_widget_set_visible(progress_bar_, TRUE);
+        gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar_), 1.0);
     } else {
         gtk_label_set_text(GTK_LABEL(lbl_remaining_), "Time Elapsed");
         gtk_widget_set_visible(progress_bar_, FALSE);
@@ -364,6 +366,12 @@ void ClientWindow::onSessionEnd(const Protocol::Message& msg) {
     double cost = msg.fields.count("cost") ? std::stod(msg.fields.at("cost")) : 0;
     int elapsed  = msg.fields.count("elapsed") ? std::stoi(msg.fields.at("elapsed")) : 0;
 
+    gtk_label_set_text(GTK_LABEL(lbl_status_), "● Session Ended — please pay");
+    gtk_label_set_text(GTK_LABEL(lbl_remaining_), "Session finished");
+
+    // Lock and cover the workstation before showing the session summary.
+    applyLockOverlay(true);
+
     // Show summary dialog
     char sum[256];
     snprintf(sum, sizeof(sum),
@@ -376,9 +384,6 @@ void ClientWindow::onSessionEnd(const Protocol::Message& msg) {
     gtk_dialog_run(GTK_DIALOG(dlg));
     gtk_widget_destroy(dlg);
 
-    gtk_label_set_text(GTK_LABEL(lbl_status_), "● Session Ended — please pay");
-    gtk_label_set_text(GTK_LABEL(lbl_remaining_), "Session finished");
-    applyLockOverlay(true);
 }
 
 void ClientWindow::onTick(const Protocol::Message& msg) {
@@ -388,15 +393,15 @@ void ClientWindow::onTick(const Protocol::Message& msg) {
 
     // Display time
     if (duration_sec_ > 0) {
-        // Timed: show remaining
+        // Fixed-time packages show elapsed time while the bar shows time left.
         char buf[16];
         snprintf(buf, sizeof(buf), "%02d:%02d:%02d",
-            remaining_sec_/3600, (remaining_sec_%3600)/60, remaining_sec_%60);
+            elapsed_sec_/3600, (elapsed_sec_%3600)/60, elapsed_sec_%60);
         gtk_label_set_text(GTK_LABEL(lbl_timer_), buf);
 
-        // Progress
+        // The remaining-time bar starts full and decreases to zero.
         double frac = duration_sec_ > 0
-            ? (double)(duration_sec_ - remaining_sec_) / duration_sec_ : 0;
+            ? (double)remaining_sec_ / duration_sec_ : 0;
         gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progress_bar_),
             std::max(0.0, std::min(1.0, frac)));
     } else {
@@ -454,6 +459,20 @@ void ClientWindow::onServerMsg(const std::string& text) {
 void ClientWindow::applyLockOverlay(bool locked) {
     if (overlay_lock_)
         gtk_widget_set_visible(overlay_lock_, locked);
+
+    if (!window_) return;
+
+    if (locked) {
+        // Keep the workstation covered while it is waiting for staff action.
+        gtk_window_set_keep_above(GTK_WINDOW(window_), TRUE);
+        gtk_window_fullscreen(GTK_WINDOW(window_));
+        gtk_window_present(GTK_WINDOW(window_));
+    } else {
+        gtk_window_set_keep_above(GTK_WINDOW(window_), FALSE);
+        gtk_window_unfullscreen(GTK_WINDOW(window_));
+        gtk_window_set_default_size(GTK_WINDOW(window_), 800, 600);
+        gtk_window_present(GTK_WINDOW(window_));
+    }
 }
 
 void ClientWindow::onServerDisconnected() {

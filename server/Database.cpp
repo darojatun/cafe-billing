@@ -82,15 +82,17 @@ bool Database::init() {
         );
     )");
 
-    // Default packages
+    // Seed defaults only for a new database. Without a uniqueness constraint,
+    // INSERT OR IGNORE would still add the same rows on every startup.
     exec(R"(
-        INSERT OR IGNORE INTO packages (name, is_timed, duration_sec, price)
+        INSERT INTO packages (name, is_timed, duration_sec, price)
         VALUES
             ('Open / Hourly', 0, 0, 3000),
             ('1 Hour',        1, 3600,  3000),
             ('2 Hours',       1, 7200,  5500),
             ('3 Hours',       1, 10800, 7500),
-            ('5 Hours',       1, 18000, 12000);
+            ('5 Hours',       1, 18000, 12000)
+        WHERE NOT EXISTS (SELECT 1 FROM packages);
     )");
 
     // Default menu items
