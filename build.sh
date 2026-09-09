@@ -12,7 +12,9 @@ mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
 echo "→ Configuring with CMake..."
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DCMAKE_CXX_FLAGS="-march=x86-64 -mtune=generic" \
+    -DCMAKE_EXE_LINKER_FLAGS="-march=x86-64 -mtune=generic"
 
 echo "→ Building..."
 make -j"$(nproc)"

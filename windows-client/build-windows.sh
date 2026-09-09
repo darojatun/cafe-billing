@@ -41,7 +41,7 @@ mkdir -p "$BUILD_DIR"
 SRCS="$SCRIPT_DIR/main.cpp $SCRIPT_DIR/WsClient.cpp"
 OUT="$BUILD_DIR/cafe-client.exe"
 
-$CXX -std=c++17 -O2 -mwindows \
+$CXX -std=c++17 -O2 -march=x86-64 -mtune=generic -mwindows \
     -DWIN32_LEAN_AND_MEAN -D_WIN32_WINNT=0x0601 \
     -I"$SCRIPT_DIR" \
     $SRCS \

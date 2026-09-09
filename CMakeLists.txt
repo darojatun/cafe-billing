@@ -5,6 +5,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Keep distributed binaries runnable on older x86-64 workstations.
+add_compile_options(-march=x86-64 -mtune=generic)
+add_link_options(-march=x86-64 -mtune=generic)
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 pkg_check_modules(SQLITE3 REQUIRED sqlite3)
