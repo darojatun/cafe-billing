@@ -97,7 +97,7 @@ bool Database::init() {
 
     // Default menu items
     exec(R"(
-        INSERT OR IGNORE INTO menu_items (name, category, price, description, available)
+        INSERT INTO menu_items (name, category, price, description, available)
         VALUES
             ('Mie Goreng',       'Food',  12000, 'Fried noodles with egg',         1),
             ('Nasi Goreng',      'Food',  13000, 'Fried rice with chicken',         1),
@@ -108,7 +108,8 @@ bool Database::init() {
             ('Air Mineral',      'Drink',  3000, '600ml mineral water',             1),
             ('Indomie Kuah',     'Food',  10000, 'Cup noodle soup',                 1),
             ('Keripik Singkong', 'Snack',  5000, 'Cassava chips',                   1),
-            ('Cokelat Wafer',    'Snack',  4000, 'Chocolate wafer bar',             1);
+            ('Cokelat Wafer',    'Snack',  4000, 'Chocolate wafer bar',             1)
+        WHERE NOT EXISTS (SELECT 1 FROM menu_items);
     )");
 
     // Default settings
