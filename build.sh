@@ -20,6 +20,15 @@ echo "→ Building..."
 make -j"$(nproc)"
 
 echo ""
+echo "→ Stripping x86-64-v2/v3 requirement from binaries..."
+for BIN in "$BUILD_DIR/cafe-server" "$BUILD_DIR/cafe-client"; do
+    if [ -f "$BIN" ]; then
+        objcopy --remove-section=.note.gnu.property "$BIN" 2>/dev/null \
+            || echo "  (skipped objcopy for $(basename "$BIN"))"
+    fi
+done
+
+echo ""
 echo "✓ Linux build complete!"
 echo ""
 echo "Binaries:"

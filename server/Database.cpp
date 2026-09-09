@@ -82,35 +82,37 @@ bool Database::init() {
         );
     )");
 
-    // Seed defaults only for a new database. Without a uniqueness constraint,
-    // INSERT OR IGNORE would still add the same rows on every startup.
-    exec(R"(
-        INSERT INTO packages (name, is_timed, duration_sec, price)
-        VALUES
-            ('Open / Hourly', 0, 0, 3000),
-            ('1 Hour',        1, 3600,  3000),
-            ('2 Hours',       1, 7200,  5500),
-            ('3 Hours',       1, 10800, 7500),
-            ('5 Hours',       1, 18000, 12000)
-        WHERE NOT EXISTS (SELECT 1 FROM packages);
-    )");
+    // Seed default packages only when the table is empty, so existing/custom
+    // packages are never duplicated or wiped across restarts.
+    if (getPackages().empty()) {
+        exec(R"(
+            INSERT INTO packages (name, is_timed, duration_sec, price)
+            VALUES
+                ('Open / Hourly', 0, 0, 3000),
+                ('1 Hour',        1, 3600,  3000),
+                ('2 Hours',       1, 7200,  5500),
+                ('3 Hours',       1, 10800, 7500),
+                ('5 Hours',       1, 18000, 12000);
+        )");
+    }
 
-    // Default menu items
-    exec(R"(
-        INSERT INTO menu_items (name, category, price, description, available)
-        VALUES
-            ('Mie Goreng',       'Food',  12000, 'Fried noodles with egg',         1),
-            ('Nasi Goreng',      'Food',  13000, 'Fried rice with chicken',         1),
-            ('Roti Bakar',       'Food',   8000, 'Toast with butter and jam',       1),
-            ('Es Teh Manis',     'Drink',  5000, 'Iced sweet tea',                  1),
-            ('Es Jeruk',         'Drink',  7000, 'Iced fresh orange juice',         1),
-            ('Kopi Susu',        'Drink',  8000, 'Milk coffee',                     1),
-            ('Air Mineral',      'Drink',  3000, '600ml mineral water',             1),
-            ('Indomie Kuah',     'Food',  10000, 'Cup noodle soup',                 1),
-            ('Keripik Singkong', 'Snack',  5000, 'Cassava chips',                   1),
-            ('Cokelat Wafer',    'Snack',  4000, 'Chocolate wafer bar',             1)
-        WHERE NOT EXISTS (SELECT 1 FROM menu_items);
-    )");
+    // Default menu items (seeded only once, on a fresh database)
+    if (getMenuItems().empty()) {
+        exec(R"(
+            INSERT INTO menu_items (name, category, price, description, available)
+            VALUES
+                ('Mie Goreng',       'Food',  12000, 'Fried noodles with egg',         1),
+                ('Nasi Goreng',      'Food',  13000, 'Fried rice with chicken',         1),
+                ('Roti Bakar',       'Food',   8000, 'Toast with butter and jam',       1),
+                ('Es Teh Manis',     'Drink',  5000, 'Iced sweet tea',                  1),
+                ('Es Jeruk',         'Drink',  7000, 'Iced fresh orange juice',         1),
+                ('Kopi Susu',        'Drink',  8000, 'Milk coffee',                     1),
+                ('Air Mineral',      'Drink',  3000, '600ml mineral water',             1),
+                ('Indomie Kuah',     'Food',  10000, 'Cup noodle soup',                 1),
+                ('Keripik Singkong', 'Snack',  5000, 'Cassava chips',                   1),
+                ('Cokelat Wafer',    'Snack',  4000, 'Chocolate wafer bar',             1);
+        )");
+    }
 
     // Default settings
     exec(R"(
