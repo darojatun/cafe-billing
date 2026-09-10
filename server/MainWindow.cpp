@@ -1400,8 +1400,17 @@ void MainWindow::showReceiptDialog(const std::string& html_path, ClientInfo* c) 
 
     GtkWidget* tv = gtk_text_view_new();
     gtk_text_view_set_editable(GTK_TEXT_VIEW(tv), FALSE);
-    gtk_text_view_set_monospace(GTK_TEXT_VIEW(tv), TRUE);
     gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(tv), GTK_WRAP_NONE);
+
+    // Force a monospace font regardless of theme; set_monospace() alone is
+    // unreliable on some desktop themes.
+    gtk_widget_set_name(tv, "receipt-view");
+    GtkCssProvider* css = gtk_css_provider_new();
+    gtk_css_provider_load_from_data(css,
+        "#receipt-view { font-family: monospace; font-size: 13px; }", -1, nullptr);
+    gtk_style_context_add_provider(gtk_widget_get_style_context(tv),
+        GTK_STYLE_PROVIDER(css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    g_object_unref(css);
 
     std::string txt_path = html_path;
     auto dot = txt_path.rfind('.');
