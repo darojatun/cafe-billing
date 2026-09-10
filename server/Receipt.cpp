@@ -45,7 +45,10 @@ std::string Receipt::makeText(const ReceiptData& d) {
           << std::string(std::max(0,rpad),' ') << " |\n";
     };
     auto kv = [&](const std::string& k, const std::string& v) {
-        std::string row = k + ": " + v;
+        // Pad the label so every colon/value lines up in monospace.
+        int pad = 12 - (int)k.size();
+        if (pad < 1) pad = 1;
+        std::string row = std::string(pad, ' ') + k + ": " + v;
         line(row);
     };
 
