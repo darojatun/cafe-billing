@@ -36,11 +36,16 @@ struct CafeSetting {
     std::string cafe_name      = "My Internet Cafe";
     std::string cafe_address   = "";
     std::string cafe_phone     = "";
-    std::string wifi_password  = "";
     std::string server_ip      = "0.0.0.0";   // bind address (0.0.0.0 = all)
     int    server_port         = 12345;
     double default_rate        = 3000.0;       // Rp per hour (open/hourly packages)
     double rate_per_minute     = 50.0;         // Rp per minute (alternative display)
+
+    // QRIS payment (type "static" now; "dynamic" planned later)
+    std::string qris_type      = "static";     // "static" | "dynamic"
+    std::string qris_merchant  = "";           // merchant/outlet display name
+    std::string qris_nmid      = "";           // NMID (used by dynamic QRIS)
+    std::string qris_payload   = "";           // static QRIS payload string
 };
 
 class Database {

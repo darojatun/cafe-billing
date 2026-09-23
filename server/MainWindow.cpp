@@ -847,12 +847,18 @@ GtkWidget* MainWindow::buildSettingsTab() {
     add_row("Cafe Name:",    &ent_cafe_name_, s.cafe_name);
     add_row("Address:",      &ent_address_,   s.cafe_address);
     add_row("Phone:",        &ent_phone_,     s.cafe_phone);
-    add_row("WiFi Password:",&ent_wifi_,      s.wifi_password, true);
 
     // ── Network Configuration ─────────────────────────────────────────────
     add_section("Network Configuration");
     add_row("Server IP (bind):", &ent_server_ip_, s.server_ip);
     add_row("Server Port:",      &ent_port_,      std::to_string(s.server_port));
+
+    // ── QRIS Payment ──────────────────────────────────────────────────────
+    add_section("QRIS Payment");
+    add_row("Type (static/dynamic):", &ent_qris_type_,   s.qris_type);
+    add_row("Merchant Name:",         &ent_qris_merchant_, s.qris_merchant);
+    add_row("NMID:",                  &ent_qris_nmid_,   s.qris_nmid);
+    add_row("Static Payload:",        &ent_qris_payload_, s.qris_payload);
 
     // ── Billing Rates ─────────────────────────────────────────────────────
     add_section("Billing Rates");
@@ -1011,11 +1017,14 @@ void MainWindow::onSaveSettingsClicked(GtkWidget*, gpointer data) {
     s.cafe_name     = gtk_entry_get_text(GTK_ENTRY(win->ent_cafe_name_));
     s.cafe_address  = gtk_entry_get_text(GTK_ENTRY(win->ent_address_));
     s.cafe_phone    = gtk_entry_get_text(GTK_ENTRY(win->ent_phone_));
-    s.wifi_password = gtk_entry_get_text(GTK_ENTRY(win->ent_wifi_));
     s.server_ip     = gtk_entry_get_text(GTK_ENTRY(win->ent_server_ip_));
     s.server_port   = std::stoi(gtk_entry_get_text(GTK_ENTRY(win->ent_port_)));
     s.default_rate  = std::stod(gtk_entry_get_text(GTK_ENTRY(win->ent_rate_)));
     s.rate_per_minute = std::stod(gtk_entry_get_text(GTK_ENTRY(win->ent_rate_min_)));
+    s.qris_type     = gtk_entry_get_text(GTK_ENTRY(win->ent_qris_type_));
+    s.qris_merchant = gtk_entry_get_text(GTK_ENTRY(win->ent_qris_merchant_));
+    s.qris_nmid     = gtk_entry_get_text(GTK_ENTRY(win->ent_qris_nmid_));
+    s.qris_payload  = gtk_entry_get_text(GTK_ENTRY(win->ent_qris_payload_));
     win->db_->saveSettings(s);
     win->server_->reloadSettings();
 

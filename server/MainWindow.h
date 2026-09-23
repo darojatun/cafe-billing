@@ -99,11 +99,14 @@ private:
     GtkWidget* ent_cafe_name_   = nullptr;
     GtkWidget* ent_address_     = nullptr;
     GtkWidget* ent_phone_       = nullptr;
-    GtkWidget* ent_wifi_        = nullptr;
     GtkWidget* ent_server_ip_   = nullptr;
     GtkWidget* ent_port_        = nullptr;
     GtkWidget* ent_rate_        = nullptr;
     GtkWidget* ent_rate_min_    = nullptr;
+    GtkWidget* ent_qris_type_   = nullptr;
+    GtkWidget* ent_qris_merchant_ = nullptr;
+    GtkWidget* ent_qris_nmid_   = nullptr;
+    GtkWidget* ent_qris_payload_ = nullptr;
 
     // Chat: client_id → GtkTextBuffer
     std::map<int, GtkTextBuffer*> chat_buffers_;

@@ -120,11 +120,14 @@ bool Database::init() {
             ('cafe_name',      'My Internet Cafe'),
             ('cafe_address',   ''),
             ('cafe_phone',     ''),
-            ('wifi_password',  ''),
             ('server_ip',      '0.0.0.0'),
             ('server_port',    '12345'),
             ('default_rate',   '3000'),
-            ('rate_per_minute','50');
+            ('rate_per_minute','50'),
+            ('qris_type',      'static'),
+            ('qris_merchant',  ''),
+            ('qris_nmid',      ''),
+            ('qris_payload',   '');
     )");
 
     return true;
@@ -382,11 +385,14 @@ CafeSetting Database::loadSettings() {
         if (key == "cafe_name")       s.cafe_name      = val;
         if (key == "cafe_address")    s.cafe_address   = val;
         if (key == "cafe_phone")      s.cafe_phone     = val;
-        if (key == "wifi_password")   s.wifi_password  = val;
         if (key == "server_ip")       s.server_ip      = val;
         if (key == "server_port")     s.server_port    = std::stoi(val);
         if (key == "default_rate")    s.default_rate   = std::stod(val);
         if (key == "rate_per_minute") s.rate_per_minute= std::stod(val);
+        if (key == "qris_type")       s.qris_type      = val;
+        if (key == "qris_merchant")   s.qris_merchant  = val;
+        if (key == "qris_nmid")       s.qris_nmid      = val;
+        if (key == "qris_payload")    s.qris_payload   = val;
     }
     sqlite3_finalize(stmt);
     return s;
@@ -399,18 +405,24 @@ bool Database::saveSettings(const CafeSetting& s) {
         "('cafe_name','%s'),"
         "('cafe_address','%s'),"
         "('cafe_phone','%s'),"
-        "('wifi_password','%s'),"
         "('server_ip','%s'),"
         "('server_port','%d'),"
         "('default_rate','%.2f'),"
-        "('rate_per_minute','%.2f');",
+        "('rate_per_minute','%.2f'),"
+        "('qris_type','%s'),"
+        "('qris_merchant','%s'),"
+        "('qris_nmid','%s'),"
+        "('qris_payload','%s');",
         escape(s.cafe_name).c_str(),
         escape(s.cafe_address).c_str(),
         escape(s.cafe_phone).c_str(),
-        escape(s.wifi_password).c_str(),
         escape(s.server_ip).c_str(),
         s.server_port,
         s.default_rate,
-        s.rate_per_minute);
+        s.rate_per_minute,
+        escape(s.qris_type).c_str(),
+        escape(s.qris_merchant).c_str(),
+        escape(s.qris_nmid).c_str(),
+        escape(s.qris_payload).c_str());
     return exec(sql);
 }
